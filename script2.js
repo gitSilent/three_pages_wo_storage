@@ -1,4 +1,5 @@
 (function () {
+  let countNotes;
   function createAppTitle(title) {
     //создаем и возвращаем заголовок приложения
     let h1 = document.createElement("h1");
@@ -55,27 +56,79 @@
       ul,
     };
   }
+  function refreshStorage(container){ // обновление данных в localStorage
+    let AllLi = container.querySelectorAll('#li');
+    masObj.splice(0,masObj.length);
+    let obj={};
+    for (let i of AllLi){
+      console.log(i.querySelector("#p_note").textContent);
+      let pContent = i.querySelector("#p_note").textContent;
+      let pStatus = false;
+      if (i.querySelector("#divNote").className == "backColor"){
+        pStatus = true;
+      }
+      masObj.push({
+        content: pContent,
+            status: pStatus
+      });
+    }
+    
+    console.log(masObj);
+}
 
-  function createTodoItems(cNotes, inputValue, container) {
+  function pullFromStorage(storageName,container,TodoList){ //выгрузка данных из localStorage
+    if (JSON.parse(localStorage.getItem(storageName)) != null){
+      masObj = JSON.parse(localStorage.getItem(storageName));
+    } else{
+      masObj = [];
+    }
+    try{
+    countNotes = masObj.length;
+    } catch {countNotes = 0}
+    // console.log("cnotes", countNotes)
+    // console.log('mas obj = ', masObj);
+    for (let i =0;i<countNotes;i++){
+      console.log(masObj[i].content)
+      if(masObj[i].status == true){
+        createTodoItems(countNotes, masObj[i].content, container,storageName,true);
+      } else{
+        createTodoItems(countNotes, masObj[i].content, container,storageName,false);
+      }
+    }
+    if (countNotes > 0){
+      createDeleteAll(container, TodoList,storageName);
+    }
+  }
+
+
+  function createTodoItems(cNotes, inputValue, container, storageName,status) {
     //создаем и возвращаем элемент списка
-    countNotes = countNotes + 1;
 
     event.preventDefault();
-    console.log("контейнер", container)
+    // console.log("контейнер", container)
     let ul = container.querySelector(".ul");
     let li = document.createElement("li");
     li.setAttribute("id", `li`);
     li.classList.add(`divEnter${cNotes}`);
     ul.appendChild(li);
     li.addEventListener("click", (e) => {
+      console.log(e.target)
       if (e.target.getAttribute("id") == "buttonDone") {
         e.target.closest("#divNote").classList.toggle("backColor");
+        refreshStorage(container);
+        localStorage.setItem(storageName, JSON.stringify(masObj));
+
       }
       if (e.target.getAttribute("id") == "buttonDelete") {
-        if (confirmDel()) {
+        if (confirmDel() == true) {
           countNotes -= 1;
           e.target.closest("#li").remove();
           console.log(countNotes);
+          
+          refreshStorage(container);
+          localStorage.setItem(storageName, JSON.stringify(masObj));
+
+          
           if (countNotes == 0) {
             document.querySelector("#btnDelAll").remove();
           }
@@ -83,9 +136,11 @@
       }
     });
 
+
     let divNote = document.createElement("div");
     divNote.setAttribute("id", `divNote`);
     li.append(divNote);
+    if (status) {divNote.classList.add("backColor")}
 
     let p_note = document.createElement("p");
     p_note.setAttribute("id", `p_note`);
@@ -113,9 +168,6 @@
     divButtons.append(buttonDelete);
     buttonDelete.textContent = "Delete";
 
-    // p_values.push(p_note.textContent);
-
-    // console.log(p_values);
     console.log(countNotes);
 
     return {
@@ -146,8 +198,9 @@
       return false;
     }
   }
-  function createDeleteAll(container, TodoList) {
-    btnDelAll = document.createElement("button");
+
+  function createDeleteAll(container, TodoList,storageName) {
+    let btnDelAll = document.createElement("button");
     //функция создания кнопки удаления всех записей
 
     btnDelAll.setAttribute("id", "btnDelAll");
@@ -163,6 +216,9 @@
             liElem.remove();
           }
           countNotes = 0;
+          masObj = [];
+          localStorage.setItem(storageName, JSON.stringify(masObj));
+
           document.querySelector("#btnDelAll").remove();
         }
       });
@@ -172,7 +228,9 @@
     };
   }
 
-  function createApp(titleName, contClass) {
+  let masObj = [];
+
+  function createApp(titleName, contClass, storageName) {
     countNotes = 0;
 
     const container = document.querySelector(contClass);
@@ -193,19 +251,25 @@
 
     const delAll = createDeleteAll;
 
+    pullFromStorage(storageName, container, TodoList);
+
     TodoItemForm.form.addEventListener("submit", function (e) {
+      countNotes=+1;
       event.preventDefault();
-      createTodoItems(countNotes, TodoItemForm.input.value, container);
+      createTodoItems(countNotes, TodoItemForm.input.value, container,storageName,false);
+      // obj.content = TodoItemForm.input.value;
+      masObj.push({
+        content: TodoItemForm.input.value,
+        status: false
+      });
+      localStorage.setItem(storageName, JSON.stringify(masObj));
+      console.log(masObj);
       TodoItemForm.input.value = "";
-      deleteAll(container, TodoList);
-      // TodoList.ul.append(TodoItems.li);
-      // TodoItems.li.append(TodoItems.divNote);
-      // TodoItems.divNote.append(TodoItems.p_note);
-      // TodoItems.divNote.append(TodoItems.divButtons);
-      // TodoItems.divButtons.append(TodoItems.buttonDone);
-      // TodoItems.divButtons.append(TodoItems.buttonDelete);
+      deleteAll(container, TodoList,storageName);
+      
+
+      
     });
-    // createTodoItems.li.addEventListener
   }
 
   // document.addEventListener("DOMContentLoaded", function () {
@@ -216,61 +280,3 @@
   window.createApp = createApp;
 })();
 
-// "use strict";
-// let divTodo = document.querySelector(".todo");
-// let nowDay, nowMonth, nowYear, nowDayOfWeek;
-// let p_values = [];
-
-// let btnDelAll = document.createElement("button");
-
-// createAppTitle();
-// createTodoItemForm();
-// createTodoList();
-// let countNotes = 0;
-
-//
-
-// divTodo.addEventListener("click", (event) => {
-//   if (event.target.getAttribute("id") == "buttonDelete") {
-//     // console.log(event.target);
-//     // console.log(event.target.getAttribute('id'))
-//     if (confirmDel()) {
-//       countNotes -= 1;
-//       event.target.closest("#li").remove();
-
-//       let AllLi = ul.querySelectorAll("#p_note");
-//       let i = 0;
-//       p_values.splice(0, p_values.length);
-//       for (let el of AllLi) {
-//         //обновление массива массива значений после нажатия кнопки Delete
-//         p_values.push(el.textContent);
-//         console.log(el);
-//       }
-//       // console.log(p_values);
-
-//       if (countNotes == 0) {
-//         btnDelAll.remove();
-//       }
-//     }
-//   }
-//   if (event.target.className.indexOf("buttonDone") != -1) {
-//     //пометка "выполнено" на записи
-//     event.target.closest("#divNote").classList.toggle("backColor");
-//   }
-// });
-
-// divList.addEventListener("click", (e) => {
-//   // удаление всех записей из списка на странице, массива и localStorage
-//   if (e.target.getAttribute("id") == "btnDelAll") {
-//     if (confirmDelAll()) {
-//       for (let i = 0; i < countNotes; i++) {
-//         let liElem = document.getElementById("li");
-//         liElem.remove();
-//       }
-//       countNotes = 0;
-//       btnDelAll.remove();
-
-//       p_values = [];
-//     }
-//   }
-// });
